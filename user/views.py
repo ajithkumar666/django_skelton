@@ -1,11 +1,9 @@
-from typing import Optional
 from django.http.response import JsonResponse
 from django.views import View
 from rest_framework.decorators import api_view
-import os
-from llama import Llama
 import fire
-
+import subprocess
+import json
 
 # Create your views here.
 class UserView(View):
@@ -23,50 +21,29 @@ class UserView(View):
         if request.method == "POST":
             raw_data: dict = dict(request.data)
             print(raw_data)
-            res: dict = {}
-            res["content"] = fire.Fire(Llama22().main)
-            res["status"] = True
-            print(res)
-            return JsonResponse(res)
+            command = [
+                "torchrun",
+                "--nproc_per_node", "1",
+                "/home/ubuntu/llama/Llama2ChatModel/chat_completion.py",
+                "--ckpt_dir","/home/ubuntu/llama/Llama2ChatModel/llama-2-7b-chat/",
+                "--tokenizer_path", "/home/ubuntu/llama/Llama2ChatModel/tokenizer.model",
+                "--max_seq_len", "512",
+                "--max_batch_size", "8",
+                "--prompt", "Newtons laws"
+            ]
 
-class Llama22():
-    def main(
-        ckpt_dir: str = "/home/ubuntu/llama/Llama2ChatModel/llama-2-7b-chat/",
-        tokenizer_path: str = "/home/ubuntu/llama/Llama2ChatModel/tokenizer.model",
-        temperature: float = 0.6,
-        top_p: float = 0.9,
-        max_seq_len: int = 512,
-        max_batch_size: int = 8,
-        max_gen_len: Optional[int] = None,
-        prompt: str = "Newtons laws",
-    ):
-        generator = Llama.build(
-            ckpt_dir=ckpt_dir,
-            tokenizer_path=tokenizer_path,
-            max_seq_len=max_seq_len,
-            max_batch_size=max_batch_size,
-        )
-        res: dict = {}
+            # Run the command
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-        if len(prompt) == 0:
-            res["message"] = "Prompt is empty"
-            res["status"] = False
-            return res
-        else:
-            # print("Prompt is : ",prompt)
-            pass
+            # Print the output and error, if any
+            print("Output:\n")
+            #print("Error:\n", result.stderr)
+            print("--------------------\n")
+            res = result.stdout.strip()
+            res=res.split("ImmiResult:")[1].strip()
 
-        dialogs = [
-            [{"role": "user", "content": prompt}],
-        ]
-        results = generator.chat_completion(
-            dialogs,  # type: ignore
-            max_gen_len=max_gen_len,
-            temperature=temperature,
-            top_p=top_p,
-        )
+            resd:dict={}
+            resd["content"]=res
 
-        for dialog, result in zip(dialogs, results):
-            res["content"] = result["generation"]["content"]
-            res["status"] = True
-        return res
+            print(resd)
+            return JsonResponse(resd)
