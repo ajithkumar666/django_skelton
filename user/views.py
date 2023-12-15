@@ -21,6 +21,7 @@ class UserView(View):
         if request.method == "POST":
             raw_data: dict = dict(request.data)
             print(raw_data)
+            prompt:str = raw_data['prompt']
             command = [
                 "torchrun",
                 "--nproc_per_node", "1",
@@ -29,7 +30,7 @@ class UserView(View):
                 "--tokenizer_path", "/home/ubuntu/llama/Llama2ChatModel/tokenizer.model",
                 "--max_seq_len", "512",
                 "--max_batch_size", "8",
-                "--prompt", "Newtons laws"
+                "--prompt", prompt
             ]
 
             # Run the command
