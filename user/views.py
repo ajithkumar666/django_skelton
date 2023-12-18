@@ -84,7 +84,7 @@ class UserView(View):
 
             generated_ids = model.generate(model_inputs, max_new_tokens=1000, do_sample=True)
             decoded = tokenizer.batch_decode(generated_ids)
-            result = decoded[0].strip()
+            result = "ImmiResult:"+decoded[0].strip()
             result=result.split("ImmiResult:")[1].strip()
             resd:dict={}
             resd["content"]=result
