@@ -19,9 +19,15 @@ class UserView(View):
     @api_view(["POST"])
     def llama(request):
         if request.method == "POST":
+            res: dict = {}
             raw_data: dict = dict(request.data)
             print(raw_data)
             prompt:str = raw_data['prompt']
+            if len(prompt) == 0:
+                print("Please enter your prompt")
+                res["message"]="Please enter your prompt"
+                res["status"]=False
+                return JsonResponse(res)
             command = [
                 "torchrun",
                 "--nproc_per_node", "1",
@@ -45,6 +51,42 @@ class UserView(View):
 
             resd:dict={}
             resd["content"]=res
+            resd["status"]=True
 
             print(resd)
+            return JsonResponse(resd)
+
+    @api_view(["POST"])
+    def mistrial(request):
+        if request.method == "POST":
+            res: dict = {}
+            raw_data: dict = dict(request.data)
+            print(raw_data)
+            prompt:str = raw_data['prompt']
+            if len(prompt) == 0:
+                print("Please enter your prompt")
+                res["message"]="Please enter your prompt"
+                res["status"]=False
+                return JsonResponse(res)
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+            device = "cpu" # the device to load the model onto
+            model = AutoModelForCausalLM.from_pretrained("mistralai/Mistral-7B-Instruct-v0.1")
+            tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-Instruct-v0.1")
+
+            messages = [
+            {"role": "user", "content": str(prompt)}
+            ]
+
+            encodeds = tokenizer.apply_chat_template(messages, return_tensors="pt")
+
+            model_inputs = encodeds.to(device)
+            model.to(device)
+
+            generated_ids = model.generate(model_inputs, max_new_tokens=1000, do_sample=True)
+            decoded = tokenizer.batch_decode(generated_ids)
+            result = decoded[0].strip()
+            result=result.split("ImmiResult:")[1].strip()
+            resd:dict={}
+            resd["content"]=result
+            resd["status"]=True
             return JsonResponse(resd)
